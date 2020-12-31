@@ -1,16 +1,16 @@
 import macros, os, strutils
 
-proc projectModuleRelPath(modules: NimNode): string =
-  echo getProjectPath(), " ", currentSourcePath()
+proc projectModuleRelPath(modules: NimNode, filePath: string): string =
+  #echo getProjectPath(), " ", currentSourcePath()
   if modules.kind == nnkInfix:
     let temp = modules
-    echo temp.treeRepr
+    #echo temp.treeRepr
     temp[2] = newEmptyNode()
     let 
-      modPath = temp.repr.replace(" ")
+      modPath = temp.repr.replace(" ").replace(".")
       absModPath = getProjectPath() & modPath
       absSourcePath = block:
-        var res = currentSourcePath()
+        var res = filePath
         res.splitPath.head
     echo absSourcePath
     echo absModPath
@@ -34,8 +34,9 @@ macro share*(modules: untyped): untyped =
           export `module`
   else: discard
 
-macro absImport*(modules: untyped): untyped =
-  echo currentSourcePath()
-  echo projectModuleRelPath(modules)
+macro absImport(modules: untyped, path: static[string]): untyped =
+  echo path
+  echo projectModuleRelPath(modules, path)
 
-absImport /test/[file]
+template aImport*(modules: untyped)=
+  absImport(modules, instantiationInfo(-1, true).filename)
