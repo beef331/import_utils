@@ -1,19 +1,25 @@
 import macros, os, strutils
 
 proc projectModuleRelPath(modules: NimNode, filePath: string): string =
-  #echo getProjectPath(), " ", currentSourcePath()
   if modules.kind == nnkInfix:
-    let temp = modules
-    #echo temp.treeRepr
+    let temp = copyNimTree(modules)
     temp[2] = newEmptyNode()
     let 
       modPath = temp.repr.replace(" ").replace(".")
-      absModPath = getProjectPath() & modPath
-      absSourcePath = block:
-        var res = filePath
-        res.splitPath.head
-    echo absSourcePath
-    echo absModPath
+      absModPath = getProjectPath() & "/" & modPath
+      absSourcePath = filePath.splitPath.head
+    result = relativePath(absModPath, absSourcePath) & "/"
+    case modules[2].kind:
+    of nnkBracket:
+      result.add '['
+      for i, module in modules[2]:
+        result.add $(module)
+        if i != modules[2].len - 1:
+          result.add ","
+      result.add ']'
+    of nnkIdent:
+      result.add $modules[2]
+    else: discard
 
 macro share*(modules: untyped): untyped =
   result = newStmtList()
@@ -35,8 +41,8 @@ macro share*(modules: untyped): untyped =
   else: discard
 
 macro absImport(modules: untyped, path: static[string]): untyped =
-  echo path
-  echo projectModuleRelPath(modules, path)
+  let modPath = projectModuleRelPath(modules, path) # Gets relative path for the module(s)
+  result = parseStmt("import " & modpath) # Converts to ast
 
-template aImport*(modules: untyped)=
+template absImport*(modules: untyped)=
   absImport(modules, instantiationInfo(-1, true).filename)
